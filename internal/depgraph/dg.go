@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run"
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/attempter"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/empty"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/failover"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/init"
+	initial2 "github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/init"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/leader"
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/stopping"
 	"github.com/go-zookeeper/zk"
 	"log/slog"
 	"os"
@@ -36,11 +37,12 @@ type DepGraph struct {
 	Config         config.Config
 	logger         *dgEntity[*slog.Logger]
 	stateRunner    *dgEntity[*run.LoopRunner]
-	emptyState     *dgEntity[*empty.State]
-	initState      *dgEntity[*initial.State]
-	attempterState *dgEntity[*attempter.State]
-	leaderState    *dgEntity[*leader.State]
-	failoverState  *dgEntity[*failover.State]
+	emptyState     *dgEntity[states.AutomataState]
+	initState      *dgEntity[states.AutomataState]
+	attempterState *dgEntity[states.AutomataState]
+	leaderState    *dgEntity[states.AutomataState]
+	failoverState  *dgEntity[states.AutomataState]
+	stoppingState  *dgEntity[states.AutomataState]
 	conn           *zk.Conn
 }
 
@@ -49,11 +51,12 @@ func New(config config.Config) *DepGraph {
 		Config:         config,
 		logger:         &dgEntity[*slog.Logger]{},
 		stateRunner:    &dgEntity[*run.LoopRunner]{},
-		emptyState:     &dgEntity[*empty.State]{},
-		initState:      &dgEntity[*initial.State]{},
-		attempterState: &dgEntity[*attempter.State]{},
-		leaderState:    &dgEntity[*leader.State]{},
-		failoverState:  &dgEntity[*failover.State]{},
+		emptyState:     &dgEntity[states.AutomataState]{},
+		initState:      &dgEntity[states.AutomataState]{},
+		attempterState: &dgEntity[states.AutomataState]{},
+		leaderState:    &dgEntity[states.AutomataState]{},
+		failoverState:  &dgEntity[states.AutomataState]{},
+		stoppingState:  &dgEntity[states.AutomataState]{},
 	}
 }
 
@@ -63,46 +66,58 @@ func (dg *DepGraph) GetLogger() (*slog.Logger, error) {
 	})
 }
 
-func (dg *DepGraph) GetInitState() (*initial.State, error) {
-	return dg.initState.get(func() (*initial.State, error) {
+func (dg *DepGraph) GetInitState() (states.AutomataState, error) {
+	return dg.initState.get(func() (states.AutomataState, error) {
 		logger, err := dg.GetLogger()
+		fmt.Println("GetInitState Call")
 		if err != nil {
 			return nil, fmt.Errorf("get logger: %w", err)
 		}
-		return initial.New(logger, dg.Config.ZookeeperServers, dg.Config.AttempterTimeout, dg.Config.WriteInterval), nil
+		return initial2.New(logger, dg.Config, nil, dg), nil
 	})
 }
 
-func (dg *DepGraph) GetAttempterState() (*attempter.State, error) {
-	return dg.attempterState.get(func() (*attempter.State, error) {
+func (dg *DepGraph) GetAttempterState() (states.AutomataState, error) {
+	return dg.attempterState.get(func() (states.AutomataState, error) {
 		logger, err := dg.GetLogger()
+		fmt.Println("Attempter Call")
 		if err != nil {
 			return nil, fmt.Errorf("get logger: %w", err)
 		}
 		if dg.conn == nil {
 			return nil, fmt.Errorf("Zookeeper connection not established")
 		}
-		return attempter.New(logger, dg.conn, dg.Config.AttempterTimeout, dg.Config.LeaderTimeout), nil
+		return attempter.New(logger, dg.Config, dg.conn, dg), nil
 	})
 }
 
-func (dg *DepGraph) GetLeaderState() (*leader.State, error) {
-	return dg.leaderState.get(func() (*leader.State, error) {
+func (dg *DepGraph) GetLeaderState() (states.AutomataState, error) {
+	return dg.leaderState.get(func() (states.AutomataState, error) {
 		logger, err := dg.GetLogger()
 		if err != nil {
 			return nil, fmt.Errorf("get logger: %w", err)
 		}
-		return leader.New(logger, dg.Config.WriteInterval), nil
+		return leader.New(logger, dg.Config, dg), nil
 	})
 }
 
-func (dg *DepGraph) GetFailoverState() (*failover.State, error) {
-	return dg.failoverState.get(func() (*failover.State, error) {
+func (dg *DepGraph) GetFailoverState() (states.AutomataState, error) {
+	return dg.failoverState.get(func() (states.AutomataState, error) {
 		logger, err := dg.GetLogger()
 		if err != nil {
 			return nil, fmt.Errorf("get logger: %w", err)
 		}
-		return failover.New(logger), nil
+		return failover.New(logger, dg.Config, dg), nil
+	})
+}
+
+func (dg *DepGraph) GetStoppingState() (states.AutomataState, error) {
+	return dg.stoppingState.get(func() (states.AutomataState, error) {
+		logger, err := dg.GetLogger()
+		if err != nil {
+			return nil, fmt.Errorf("get logger: %w", err)
+		}
+		return stopping.New(logger, dg.conn, dg.Config, dg), nil
 	})
 }
 
@@ -112,6 +127,11 @@ func (dg *DepGraph) GetRunner() (run.Runner, error) {
 		if err != nil {
 			return nil, fmt.Errorf("get logger: %w", err)
 		}
-		return run.NewLoopRunner(logger, dg.Config.LeaderTimeout, dg.Config.AttempterTimeout, dg.Config.FileDir, dg.Config.StorageCapacity), nil
+		return run.NewLoopRunner(logger, dg), nil
 	})
+}
+
+func (dg *DepGraph) SetConn(conn *zk.Conn) error {
+	dg.conn = conn
+	return nil
 }

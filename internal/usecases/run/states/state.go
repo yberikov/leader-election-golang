@@ -1,6 +1,8 @@
 package states
 
-import "context"
+import (
+	"context"
+)
 
 type AutomataState interface {
 	Run(ctx context.Context) (AutomataState, error)

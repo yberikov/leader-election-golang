@@ -1,8 +1,10 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	config2 "github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run"
 	"log/slog"
 	"os"
 	"strconv"
@@ -15,7 +17,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitRunCommand() (*cobra.Command, error) {
+func InitRunCommand(ctx context.Context) (*cobra.Command, error) {
 	cmdArgs := cmdargs.RunArgs{}
 	cmd := &cobra.Command{
 		Use:   "run",
@@ -44,9 +46,9 @@ func InitRunCommand() (*cobra.Command, error) {
 				return fmt.Errorf("get logger: %w", err)
 			}
 
-			logger.Info("args received", slog.String("servers", strings.Join(cmdArgs.ZookeeperServers, ", ")))
+			logger.Info("args received", slog.String("servers", strings.Join(zookeeperServers, ", ")))
 
-			runner, err := dg.GetRunner()
+			runner := run.NewLoopRunner(logger, dg)
 			if err != nil {
 				return fmt.Errorf("get runner: %w", err)
 			}
@@ -54,7 +56,7 @@ func InitRunCommand() (*cobra.Command, error) {
 			if err != nil {
 				return fmt.Errorf("get first state: %w", err)
 			}
-			err = runner.Run(cmd.Context(), firstState)
+			err = runner.Run(ctx, firstState)
 			if err != nil {
 				return fmt.Errorf("run states: %w", err)
 			}

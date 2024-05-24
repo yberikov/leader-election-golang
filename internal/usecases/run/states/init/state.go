@@ -2,31 +2,29 @@ package initial
 
 import (
 	"context"
-	"errors"
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph/factory"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/attempter"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/failover"
 	"github.com/go-zookeeper/zk"
 	"log/slog"
 	"time"
 )
 
-// New creates a new instance of the Init state
-func New(logger *slog.Logger, zooServers []string, attemptInterval time.Duration, writeInterval time.Duration) *State {
+func New(logger *slog.Logger, config config.Config, conn *zk.Conn, factory factory.StateFactory) *State {
+	logger = logger.With("subsystem", "InitState")
 	return &State{
-		logger:          logger,
-		zooServers:      zooServers,
-		attemptInterval: attemptInterval,
-		writeInterval:   writeInterval,
+		logger:  logger,
+		conn:    conn,
+		config:  config,
+		factory: factory,
 	}
 }
 
-// State represents the Init state of the state machine
 type State struct {
-	logger          *slog.Logger
-	zooServers      []string
-	attemptInterval time.Duration
-	writeInterval   time.Duration
+	logger  *slog.Logger
+	conn    *zk.Conn
+	config  config.Config
+	factory factory.StateFactory
 }
 
 // String returns the name of the state
@@ -36,27 +34,34 @@ func (s *State) String() string {
 
 // Run executes the logic of the Init state
 func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
-	conn, _, err := zk.Connect(s.zooServers, 10*time.Second)
-	if err != nil {
-		s.logger.Error("Connection failed")
-		return failover.New(s.logger), errors.New("connection to zookeeper failed")
+	if s.conn == nil {
+		conn, _, err := zk.Connect(s.config.ZookeeperServers, 10*time.Second)
+		s.conn = conn
+		if err != nil {
+			s.logger.Error("Connection failed")
+			return s.factory.GetFailoverState()
+		}
 	}
+
 	// Define the election path
 	electionPath := "/election"
 
 	// Ensure the election znode exists
-	exists, _, err := conn.Exists(electionPath)
+	exists, _, err := s.conn.Exists(electionPath)
 	if err != nil {
 		s.logger.Error("Error checking if znode exists: %v", err)
-		return failover.New(s.logger), errors.New("connection to zookeeper failed")
+		return s.factory.GetFailoverState()
 	}
 	if !exists {
-		_, err := conn.Create(electionPath, nil, 0, zk.WorldACL(zk.PermAll))
+		_, err := s.conn.Create(electionPath, nil, 0, zk.WorldACL(zk.PermAll))
 		if err != nil {
 			s.logger.Error("Error creating election znode: %v", err)
-			return failover.New(s.logger), errors.New("connection to zookeeper failed")
+			return s.factory.GetFailoverState()
 		}
 	}
-
-	return attempter.New(s.logger, conn, s.attemptInterval, s.writeInterval), nil
+	err = s.factory.SetConn(s.conn)
+	if err != nil {
+		return nil, err
+	}
+	return s.factory.GetAttempterState()
 }

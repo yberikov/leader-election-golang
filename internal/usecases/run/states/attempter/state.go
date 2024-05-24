@@ -2,9 +2,9 @@ package attempter
 
 import (
 	"context"
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph/factory"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/failover"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/leader"
 	"github.com/go-zookeeper/zk"
 	"log/slog"
 	"sort"
@@ -14,22 +14,20 @@ import (
 
 const electionPath = "/election"
 
-// New creates a new instance of the Init state
-func New(logger *slog.Logger, conn *zk.Conn, attemptInterval time.Duration, writeInterval time.Duration) *State {
+func New(logger *slog.Logger, config config.Config, conn *zk.Conn, factory factory.StateFactory) *State {
 	return &State{
-		logger:          logger,
-		conn:            conn,
-		attemptInterval: attemptInterval,
-		writeInterval:   writeInterval,
+		logger:  logger,
+		conn:    conn,
+		config:  config,
+		factory: factory,
 	}
 }
 
-// State represents the Init state of the state machine
 type State struct {
-	logger          *slog.Logger
-	conn            *zk.Conn
-	attemptInterval time.Duration
-	writeInterval   time.Duration
+	logger  *slog.Logger
+	conn    *zk.Conn
+	config  config.Config
+	factory factory.StateFactory
 }
 
 // String returns the name of the state
@@ -45,14 +43,14 @@ func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 
 	if err != nil {
 		s.logger.LogAttrs(ctx, slog.LevelError, "Error creating znode", slog.String("error", err.Error()))
-		return failover.New(s.logger), nil
+		return s.factory.GetFailoverState()
 	}
 	s.logger.LogAttrs(ctx, slog.LevelInfo, "Created znode", slog.String("znode", znode))
 
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return s.factory.GetStoppingState()
 		case <-time.After(time.Second * 5):
 
 			children, _, err := s.conn.Children(electionPath)
@@ -68,7 +66,7 @@ func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 
 			if znode == electionPath+"/"+children[0] {
 				s.logger.LogAttrs(ctx, slog.LevelInfo, "I am the leader")
-				return leader.New(s.logger, s.writeInterval), nil
+				return s.factory.GetLeaderState()
 			}
 
 			// Find the znode to watch
