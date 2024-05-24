@@ -45,6 +45,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      - zoo1
+      - zoo2
+      - zoo3
     environment:
       - ELECTION_ZK_SERVERS=zoo1:2181,zoo2:2181,zoo3:2181
       - ELECTION_LEADER_TIMEOUT=10s
@@ -52,10 +56,15 @@ services:
       - ELECTION_FILE_DIR=/tmp/election
       - ELECTION_STORAGE_CAPACITY=10
 
+
   app2:
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      - zoo1
+      - zoo2
+      - zoo3
     environment:
       - ELECTION_ZK_SERVERS=zoo1:2181,zoo2:2181,zoo3:2181
       - ELECTION_LEADER_TIMEOUT=10s
@@ -67,6 +76,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      - zoo1
+      - zoo2
+      - zoo3
     environment:
       - ELECTION_ZK_SERVERS=zoo1:2181,zoo2:2181,zoo3:2181
       - ELECTION_LEADER_TIMEOUT=10s

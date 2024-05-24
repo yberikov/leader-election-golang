@@ -69,9 +69,8 @@ func (dg *DepGraph) GetLogger() (*slog.Logger, error) {
 func (dg *DepGraph) GetInitState() (states.AutomataState, error) {
 	return dg.initState.get(func() (states.AutomataState, error) {
 		logger, err := dg.GetLogger()
-		fmt.Println("GetInitState Call")
 		if err != nil {
-			return nil, fmt.Errorf("get logger: %w", err)
+			return nil, fmt.Errorf("error on: getting logger - %w", err)
 		}
 		return initial2.New(logger, dg.Config, nil, dg), nil
 	})
@@ -80,12 +79,11 @@ func (dg *DepGraph) GetInitState() (states.AutomataState, error) {
 func (dg *DepGraph) GetAttempterState() (states.AutomataState, error) {
 	return dg.attempterState.get(func() (states.AutomataState, error) {
 		logger, err := dg.GetLogger()
-		fmt.Println("Attempter Call")
 		if err != nil {
-			return nil, fmt.Errorf("get logger: %w", err)
+			return nil, fmt.Errorf("error on: getting logger - %w", err)
 		}
 		if dg.conn == nil {
-			return nil, fmt.Errorf("Zookeeper connection not established")
+			return nil, fmt.Errorf("error on: Zookeeper connection not established")
 		}
 		return attempter.New(logger, dg.Config, dg.conn, dg), nil
 	})
@@ -95,7 +93,7 @@ func (dg *DepGraph) GetLeaderState() (states.AutomataState, error) {
 	return dg.leaderState.get(func() (states.AutomataState, error) {
 		logger, err := dg.GetLogger()
 		if err != nil {
-			return nil, fmt.Errorf("get logger: %w", err)
+			return nil, fmt.Errorf("error on: getting logger %w", err)
 		}
 		return leader.New(logger, dg.Config, dg), nil
 	})
@@ -105,7 +103,7 @@ func (dg *DepGraph) GetFailoverState() (states.AutomataState, error) {
 	return dg.failoverState.get(func() (states.AutomataState, error) {
 		logger, err := dg.GetLogger()
 		if err != nil {
-			return nil, fmt.Errorf("get logger: %w", err)
+			return nil, fmt.Errorf("error on: getting logger %w", err)
 		}
 		return failover.New(logger, dg.Config, dg), nil
 	})
@@ -115,7 +113,7 @@ func (dg *DepGraph) GetStoppingState() (states.AutomataState, error) {
 	return dg.stoppingState.get(func() (states.AutomataState, error) {
 		logger, err := dg.GetLogger()
 		if err != nil {
-			return nil, fmt.Errorf("get logger: %w", err)
+			return nil, fmt.Errorf("error on: getting logger %w", err)
 		}
 		return stopping.New(logger, dg.conn, dg.Config, dg), nil
 	})
@@ -125,7 +123,7 @@ func (dg *DepGraph) GetRunner() (run.Runner, error) {
 	return dg.stateRunner.get(func() (*run.LoopRunner, error) {
 		logger, err := dg.GetLogger()
 		if err != nil {
-			return nil, fmt.Errorf("get logger: %w", err)
+			return nil, fmt.Errorf("error on: getting logger: %w", err)
 		}
 		return run.NewLoopRunner(logger, dg), nil
 	})

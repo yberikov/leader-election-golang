@@ -13,7 +13,7 @@ import (
 
 // New creates a new instance of the Failover state
 func New(logger *slog.Logger, config config.Config, factory factory.StateFactory) *State {
-	logger = logger.With("subsystem", "FailoverState")
+	logger = logger.With("state", "FailoverState")
 	return &State{
 		logger:  logger,
 		config:  config,
@@ -28,12 +28,10 @@ type State struct {
 	factory factory.StateFactory
 }
 
-// String returns the name of the state
 func (s *State) String() string {
 	return "Failover"
 }
 
-// Run executes the logic of the Failover state
 func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 	s.logger.LogAttrs(ctx, slog.LevelInfo, "Entering failover state")
 
@@ -47,7 +45,7 @@ func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 			s.logger.LogAttrs(ctx, slog.LevelInfo, "Attempting to recover connection to Zookeeper", slog.Int("attempt", i+1))
 
 			conn, _, err := zk.Connect(s.config.ZookeeperServers, 10*time.Second)
-			if conn != nil && err != nil {
+			if conn != nil || err != nil {
 				s.logger.LogAttrs(ctx, slog.LevelInfo, "Successfully reconnected to Zookeeper")
 				// Assuming that the Init state is the entry point after a successful reconnection
 				initState, err := s.factory.GetInitState()

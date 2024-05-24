@@ -9,9 +9,8 @@ import (
 	"log/slog"
 )
 
-// New creates a new instance of the Init state
 func New(logger *slog.Logger, conn *zk.Conn, config config.Config, factory factory.StateFactory) *State {
-	logger = logger.With("subsystem", "StoppingState")
+	logger = logger.With("state", "StoppingState")
 	return &State{
 		logger:  logger,
 		conn:    conn,
@@ -40,11 +39,6 @@ func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 	s.logger.LogAttrs(ctx, slog.LevelInfo, "Releasing resources")
 	if s.conn != nil {
 		s.conn.Close()
-	}
-
-	select {
-	case <-ctx.Done():
-		s.logger.LogAttrs(ctx, slog.LevelInfo, "Context cancelled, shutting down")
 	}
 
 	s.logger.LogAttrs(ctx, slog.LevelInfo, "Application stopped gracefully")

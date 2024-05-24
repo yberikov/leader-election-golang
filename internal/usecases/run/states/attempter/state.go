@@ -15,6 +15,7 @@ import (
 const electionPath = "/election"
 
 func New(logger *slog.Logger, config config.Config, conn *zk.Conn, factory factory.StateFactory) *State {
+	logger = logger.With("state", "attempterState")
 	return &State{
 		logger:  logger,
 		conn:    conn,
@@ -36,11 +37,9 @@ func (s *State) String() string {
 }
 
 func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
-
 	s.logger.LogAttrs(ctx, slog.LevelInfo, "Attempting to become leader")
 
 	znode, err := s.conn.CreateProtectedEphemeralSequential(electionPath+"/guid-n_", nil, zk.WorldACL(zk.PermAll))
-
 	if err != nil {
 		s.logger.LogAttrs(ctx, slog.LevelError, "Error creating znode", slog.String("error", err.Error()))
 		return s.factory.GetFailoverState()

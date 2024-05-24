@@ -10,8 +10,10 @@ import (
 	"time"
 )
 
+const electionPath = "/election"
+
 func New(logger *slog.Logger, config config.Config, conn *zk.Conn, factory factory.StateFactory) *State {
-	logger = logger.With("subsystem", "InitState")
+	logger = logger.With("state", "InitState")
 	return &State{
 		logger:  logger,
 		conn:    conn,
@@ -38,13 +40,10 @@ func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 		conn, _, err := zk.Connect(s.config.ZookeeperServers, 10*time.Second)
 		s.conn = conn
 		if err != nil {
-			s.logger.Error("Connection failed")
+			s.logger.Error("Connection failed in initState")
 			return s.factory.GetFailoverState()
 		}
 	}
-
-	// Define the election path
-	electionPath := "/election"
 
 	// Ensure the election znode exists
 	exists, _, err := s.conn.Exists(electionPath)
@@ -61,7 +60,8 @@ func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 	}
 	err = s.factory.SetConn(s.conn)
 	if err != nil {
-		return nil, err
+		s.logger.Error("Error on setting connection: %v", err)
+		return s.factory.GetFailoverState()
 	}
 	return s.factory.GetAttempterState()
 }

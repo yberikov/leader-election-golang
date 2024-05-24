@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph/factory"
-	"io/ioutil"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -17,7 +16,7 @@ import (
 
 // New creates a new instance of the Leader state
 func New(logger *slog.Logger, config config.Config, factory factory.StateFactory) *State {
-	logger = logger.With("subsystem", "LeaderState")
+	logger = logger.With("state", "LeaderState")
 	return &State{
 		logger:  logger,
 		config:  config,
@@ -67,7 +66,7 @@ func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 
 // manageFiles ensures that the number of files in the directory does not exceed the storage capacity
 func (s *State) manageFiles(ctx context.Context) error {
-	files, err := ioutil.ReadDir(s.config.FileDir)
+	files, err := os.ReadDir(s.config.FileDir)
 	if err != nil {
 		return fmt.Errorf("failed to read directory: %w", err)
 	}
@@ -75,7 +74,10 @@ func (s *State) manageFiles(ctx context.Context) error {
 	if len(files) > s.config.StorageCapacity {
 		// Sort files by modification time
 		sort.Slice(files, func(i, j int) bool {
-			return files[i].ModTime().Before(files[j].ModTime())
+			fileInfoI, _ := files[i].Info()
+			fileInfoJ, _ := files[j].Info()
+
+			return fileInfoI.ModTime().Before(fileInfoJ.ModTime())
 		})
 
 		// Remove oldest files if exceeding storage capacity
