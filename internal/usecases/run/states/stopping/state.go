@@ -2,11 +2,13 @@ package stopping
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
+
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph/factory"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
 	"github.com/go-zookeeper/zk"
-	"log/slog"
 )
 
 func New(logger *slog.Logger, conn *zk.Conn, config config.Config, factory factory.StateFactory) *State {
@@ -42,5 +44,5 @@ func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 	}
 
 	s.logger.LogAttrs(ctx, slog.LevelInfo, "Application stopped gracefully")
-	return nil, nil
+	return nil, fmt.Errorf("stopping state: application stopped gracefully")
 }

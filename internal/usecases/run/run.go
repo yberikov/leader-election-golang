@@ -3,9 +3,10 @@ package run
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph/factory"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
-	"log/slog"
 )
 
 var _ Runner = &LoopRunner{}

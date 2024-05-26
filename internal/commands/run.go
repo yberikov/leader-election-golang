@@ -3,15 +3,16 @@ package commands
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"strings"
+	"time"
+
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/commands/cmdargs"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"log/slog"
-	"strings"
-	"time"
 )
 
 func InitRunCommand(ctx context.Context) (*cobra.Command, error) {
@@ -21,7 +22,7 @@ func InitRunCommand(ctx context.Context) (*cobra.Command, error) {
 		Short: "Starts a leader election node",
 		Long: `This command starts the leader election node that connects to zookeeper
 		and starts to try to acquire leadership by creation of ephemeral node`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			// Load configuration from flags and environment variables
 			zookeeperServers := strings.Split(viper.GetStringSlice("zk-servers")[0], ",")
 			leaderTimeout := viper.GetDuration("leader-timeout")

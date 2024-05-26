@@ -2,13 +2,14 @@ package failover
 
 import (
 	"context"
+	"log/slog"
+	"time"
+
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph/factory"
-	"time"
 
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
 	"github.com/go-zookeeper/zk"
-	"log/slog"
 )
 
 // New creates a new instance of the Failover state

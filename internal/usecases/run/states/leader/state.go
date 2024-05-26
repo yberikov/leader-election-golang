@@ -3,13 +3,14 @@ package leader
 import (
 	"context"
 	"fmt"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph/factory"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"time"
+
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph/factory"
 
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
 )
@@ -48,7 +49,7 @@ func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 			return s.factory.GetStoppingState()
 		case <-ticker.C:
 			filePath := filepath.Join(s.config.FileDir, fmt.Sprintf("leader_%d.txt", time.Now().Unix()))
-			err := os.WriteFile(filePath, []byte("Leader active"), 0644)
+			err := os.WriteFile(filePath, []byte("Leader active"), 0o644)
 			if err != nil {
 				s.logger.LogAttrs(ctx, slog.LevelError, "Error writing to file", slog.String("error", err.Error()))
 				continue

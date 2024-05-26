@@ -2,6 +2,10 @@ package depgraph
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
+	"sync"
+
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
@@ -11,9 +15,6 @@ import (
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/leader"
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states/stopping"
 	"github.com/go-zookeeper/zk"
-	"log/slog"
-	"os"
-	"sync"
 )
 
 type dgEntity[T any] struct {

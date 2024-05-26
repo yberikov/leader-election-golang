@@ -2,14 +2,15 @@ package attempter
 
 import (
 	"context"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph/factory"
-	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
-	"github.com/go-zookeeper/zk"
 	"log/slog"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/config"
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/depgraph/factory"
+	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
+	"github.com/go-zookeeper/zk"
 )
 
 const electionPath = "/election"
@@ -46,11 +47,15 @@ func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 	}
 	s.logger.LogAttrs(ctx, slog.LevelInfo, "Created znode", slog.String("znode", znode))
 
+	ticker := time.NewTicker(s.config.LeaderTimeout)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
+			s.logger.LogAttrs(ctx, slog.LevelInfo, "Context done in attempter state")
 			return s.factory.GetStoppingState()
-		case <-time.After(time.Second * 5):
+		case <-ticker.C:
 
 			children, _, err := s.conn.Children(electionPath)
 			if err != nil {
