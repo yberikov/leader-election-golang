@@ -1,9 +1,7 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-24ddc0f5d75046c5622901739e7c5dd533143b0c8e959d652212380cedb1ea36.svg)](https://classroom.github.com/a/fpB8BvPg)
-# 2024-spring-go-course-lesson8-leader-election
 
-Задачка от Жака Фреско, на решение дается тридцать минут.
 
-Вам необходимо реализовать сервис, который существует в нескольких репликах и каждая реплика постоянно борется за лидерство. Реплика, которая становится лидером, должна каждые `leader-timeout` секунд писать файл в директорию `file-dir` а также удалять старые файлы, если количество файлов в директории больше, чем `storage-capacity`. Для выбора лидера необходимо использовать эфемерные ноды ZooKeeper. Сервис должен представлять собой стейт машину, которая в зависимости от действий меняет свое состояние. Список состояний следующий:
+# Project Overview
+This project implements a distributed leader election service using ephemeral nodes in ZooKeeper. The service is designed to run in multiple replicas, with each replica competing to become the leader. The leader is responsible for periodically writing a file to a specified directory and managing the storage capacity by deleting old files if necessary. The service operates as a state machine with the following states:
 
 - `Init` - Начинается инициализация, проверка доступности всех ресурсов
 - `Attempter` - Пытаемся стать лидером - раз в `attempter-timeout` пытаемся создать эфемерную ноду в зукипере
@@ -15,56 +13,60 @@
 stateDiagram-v2
 
 [*] --> Init
-Init --> Attempter : Инициализация успешна, начинаем
-Init --> Failover : Произошел сбой, стал недоступен зукипер
-Attempter --> Failover : Произошел сбой, стал недоступен зукипер
-Leader --> Failover : Произошел сбой, стал недоступен зукипер
-Attempter --> Leader : Смогли создать эфемерную ноду в зукипере
-Init --> Stopping : Получили `SIGTERM`
-Attempter --> Stopping : Получили `SIGTERM`
-Leader --> Stopping : Получили `SIGTERM`
-Failover --> Stopping : Получили `SIGTERM`
+Init --> Attempter : Initialization successful, start attempting
+Init --> Failover : Failure, ZooKeeper unavailable
+Attempter --> Failover : Failure, ZooKeeper unavailable
+Leader --> Failover : Failure, ZooKeeper unavailable
+Attempter --> Leader : Successfully created ephemeral node in ZooKeeper
+Init --> Stopping : Received `SIGTERM`
+Attempter --> Stopping : Received `SIGTERM`
+Leader --> Stopping : Received `SIGTERM`
+Failover --> Stopping : Received `SIGTERM`
 ```
 
-## Структура проекта
+## Getting Started
 
-На данный момент реализован базовый скелет проекта. Ниже рассмотрены важные директории
+1. Clone repository and Install dependencies:
+```bash
+git clone https://github.com/yberikov/leader-election-golang/
+cd leader-election-golan
+go mod tidy
+```
+
+2. Build and run docker-compose
+```bash
+docker-compose up --build services
+```
+
+
+
+## Project Structure
+The project is organized into the following directories:
+
 
 ```plain
 .
 ├── README.md
 ├── cmd
-│   └── election - тут расположен основной main из которого собирается основной бинарь
+│   └── election - main package containing the main function
 └── internal
-    ├── commands - тут расположены хэндлеры кобра команд
-    │   └── cmdargs - тут расположены структуры для хранения аргументов кобра команд
-    ├── depgraph - структура графа зависимостей - предоставляет DI контейнер с ленивой инициализацией
-    └── usecases - основные юзкейсы
-        └── run - юзкейс, который будет запускать стейт машину 
+    ├── commands - contains Cobra command handlers
+    │   └── cmdargs - structures for storing Cobra command arguments
+    ├── depgraph - dependency graph structure, providing a DI container with lazy initialization
+    └── usecases - main use cases
+        └── run - use case for running the state machine
             └── states
-                └── empty - стейт для примера, в итоговом сервисе использоваться не должен
+                └── empty - example state, not used in the final service
 ```
 
-## Конфигурация
+## Configuration
 
-Конфигурирование проекта должно осуществляться с помощью флагов в командной строке, или с помощью переменных окружения, которые повторяют функциональность флагов. Название переменных получаем из названия флага, переводя его в верхний регистр, заменой всех знаков минуса на знак подчеркивания а также добавлением в начале названия бинарника в верхнем регистре. Пример: `--some-flag` --> `ELECTION_SOME_FLAG`.
+Configuration is done via command-line flags or environment variables. Environment variables are derived from the flag names by converting them to uppercase, replacing dashes with underscores, and prefixing with ELECTION_.
 
-Список необходимых настроек:
-
-- `zk-servers`(`[]string`) - Массив с адресами зукипер серверов. Пример: `--zk-servers=foo1.bar:2181,foo2.bar:2181`
-- `leader-timeout`(`time.Duration`) - Периодичность записи лидером файлика на диск. Пример: `--leader-timeout=10s`
-- `attempter-timeout`(`time.Duration`) - Периодичность с которой атемптер пытается стать лидером. Пример: `--attempter-timeout=10s`
-- `file-dir`(`string`) - Директория, в которую лидер должен записывать файлики. Пример: `--file-dir=/tmp/election`
-- `storage-capacity`(`int`) - Максимальное количество файлов в директории `file-dir`. Пример: `--storage-capacity=10`
-
-## Нефункциональные требования
-
-- Наличие подробного логирования
-- Архитектура, разбиение на слои
-- Желательно наличие метрик
-  - Текущее состояние
-  - Время в текущем состоянии
-  - Количество изменений состояния
-- Graceful shutdown
-- Тестируемость - должна быть возможность протестировать любой слой кроме мейна и кобра команд. Особенно уделите внимание стейтам, в которых есть таймауты(например ожидание когда можно будет записать файл на диск или попытаться стать лидером). Подумайте насчет абстракции поверх стандартных таймеров
+Required Settings
+zk-servers ([]string): Array of ZooKeeper server addresses. Example: --zk-servers=foo1.bar:2181,foo2.bar:2181
+leader-timeout (time.Duration): Interval at which the leader writes a file to the disk. Example: --leader-timeout=10s
+attempter-timeout (time.Duration): Interval at which the attender attempts to become the leader. Example: --attempter-timeout=10s
+file-dir (string): Directory where the leader writes files. Example: --file-dir=/tmp/election
+storage-capacity (int): Maximum number of files in the file-dir directory. Example: --storage-capacity=10
 
