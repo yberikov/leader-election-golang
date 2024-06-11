@@ -2,6 +2,7 @@ package empty
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/central-university-dev/2024-spring-go-course-lesson8-leader-election/internal/usecases/run/states"
@@ -24,5 +25,5 @@ func (s *State) String() string {
 
 func (s *State) Run(ctx context.Context) (states.AutomataState, error) {
 	s.logger.LogAttrs(ctx, slog.LevelInfo, "Nothing happened")
-	return nil, nil
+	return nil, fmt.Errorf("empty State")
 }

@@ -14,6 +14,9 @@ FROM alpine:latest
 
 COPY --from=build /app/build/* /opt/
 
+# Create the required directory
+RUN mkdir -p /tmp/election
+
 ENTRYPOINT [ "/opt/election" ]
 CMD [ "run" ]
 
