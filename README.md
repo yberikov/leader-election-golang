@@ -3,11 +3,11 @@
 # Project Overview
 This project implements a distributed leader election service using ephemeral nodes in ZooKeeper. The service is designed to run in multiple replicas, with each replica competing to become the leader. The leader is responsible for periodically writing a file to a specified directory and managing the storage capacity by deleting old files if necessary. The service operates as a state machine with the following states:
 
-- `Init` - Начинается инициализация, проверка доступности всех ресурсов
-- `Attempter` - Пытаемся стать лидером - раз в `attempter-timeout` пытаемся создать эфемерную ноду в зукипере
-- `Leader` - Стали лидером, нужно писать файлик на диск(симуляция полезной деятельности)
-- `Failover` - Что-то сломалось, попытка приложения починить самого себя
-- `Stopping` - Graceful shutdown - состояние, в котором приложение освобождает все свои ресурсы
+- `Init` - Initialization begins, checking the availability of all resources
+- `Attempter` - Trying to become a leader - once in `attempter-timeout` we try to create an ephemeral node in zookeeper
+- `Leader` - Became a leader, need to write a file to disk (simulation of useful activity)
+- `Failover` - Something is broken, the app is trying to self-recover
+- `Stopping` - Graceful shutdown - a state in which an application releases all its resources
 
 ```mermaid
 stateDiagram-v2
@@ -61,12 +61,27 @@ The project is organized into the following directories:
 
 ## Configuration
 
-Configuration is done via command-line flags or environment variables. Environment variables are derived from the flag names by converting them to uppercase, replacing dashes with underscores, and prefixing with ELECTION_.
+Configuration is done via command-line flags or environment variables.
 
-Required Settings
-zk-servers ([]string): Array of ZooKeeper server addresses. Example: --zk-servers=foo1.bar:2181,foo2.bar:2181
-leader-timeout (time.Duration): Interval at which the leader writes a file to the disk. Example: --leader-timeout=10s
-attempter-timeout (time.Duration): Interval at which the attender attempts to become the leader. Example: --attempter-timeout=10s
-file-dir (string): Directory where the leader writes files. Example: --file-dir=/tmp/election
-storage-capacity (int): Maximum number of files in the file-dir directory. Example: --storage-capacity=10
+### Required Settings
 
+zk-servers: Array of ZooKeeper server addresses.
+```
+--zk-servers=foo1.bar:2181,foo2.bar:2181
+```
+leader-timeout: Interval at which the leader writes a file to the disk.
+```
+--leader-timeout=10s
+```
+attempter-timeout: Interval at which the attender attempts to become the leader.
+```
+--attempter-timeout=10s
+```
+file-dir: Directory where the leader writes files.
+```
+--file-dir=/tmp/election
+```
+storage-capacity: Maximum number of files in the file-dir directory
+```
+--storage-capacity=10
+```
